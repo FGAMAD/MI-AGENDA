@@ -48,7 +48,7 @@ main{padding:0 10px;margin:12px auto}
 @media(max-width:380px){header>div{grid-template-columns:1fr 1fr}header>div button:last-of-type{grid-column:1/-1}}
 </style></head>
 <body>
-<header><h1>Mi Agenda de Actividades</h1><div style="display:flex;gap:8px"><button onclick="exportData()">Exportar</button><button onclick="document.getElementById('importFile').click()">Importar</button><button onclick="openModal()">＋ Nueva actividad</button></div><input id="importFile" type="file" accept=".json" style="display:none" onchange="importData(event)">
+<header><h1>Mi Agenda de Actividades</h1><div style="display:flex;gap:8px"><button onclick="exportData()">Exportar</button><button onclick="document.getElementById('importFile').click()">Importar</button><button onclick="openModal()">＋ Nueva actividad</button><button onclick="document.getElementById('imageFile').click()">📷 Desde imagen</button></div><input id="importFile" type="file" accept=".json" style="display:none" onchange="importData(event)"><input id="imageFile" type="file" accept="image/*" capture="environment" style="display:none" onchange="previewImage(event)">
 </header></header><nav>
 <button class="tab active" onclick="showView('home',this)">Inicio</button>
 <button class="tab" onclick="showView('calendar',this)">Calendario anual</button>
@@ -91,6 +91,8 @@ main{padding:0 10px;margin:12px auto}
 </div>
 </div>
 
+<div class="modal" id="imageModal"><div class="modal-box"><h2>📷 Imagen seleccionada</h2><p class="muted">Prueba de selección de foto o pantallazo. En esta versión todavía no se reconocen los datos automáticamente.</p><div style="text-align:center"><img id="imagePreview" alt="Imagen seleccionada" style="max-width:100%;max-height:55vh;border-radius:10px;border:1px solid #e5e7eb"></div><div class="actions"><button type="button" class="secondary" onclick="closeImageModal()">Cerrar</button><button type="button" class="primary" onclick="useImageForActivity()">Usar para nueva actividad</button></div></div></div>
+
 <script>
 const types=[
 ["Golf","🏌️"],["Arbitraje RFGM","⚖️"],["Arbitraje RFEG","⚖️"],["Marcaje RFGM","📍"],
@@ -106,6 +108,11 @@ let activities=JSON.parse(localStorage.getItem("myActivities")||"[]");
 let year=new Date().getFullYear();
 
 let localHolidays=JSON.parse(localStorage.getItem("myLocalHolidays")||"{}");
+let selectedImageData = null;
+function previewImage(event){const file=event.target.files&&event.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{selectedImageData=reader.result;document.getElementById("imagePreview").src=selectedImageData;document.getElementById("imageModal").classList.add("open");};reader.readAsDataURL(file);event.target.value="";}
+function closeImageModal(){document.getElementById("imageModal").classList.remove("open");}
+function useImageForActivity(){closeImageModal();openModal();const p=document.getElementById("photoPreview");if(p&&selectedImageData){p.innerHTML='<img src="'+selectedImageData+'" style="max-width:180px;max-height:180px;border-radius:10px;margin-top:6px">';}}
+
 function addLocalHoliday(){
 let d=document.getElementById("localHolidayDate").value,n=document.getElementById("localHolidayName").value.trim();
 if(!d||!n)return; localHolidays[d]=n; localStorage.setItem("myLocalHolidays",JSON.stringify(localHolidays)); document.getElementById("localHolidayName").value=""; render(); renderCalendar();
@@ -248,6 +255,7 @@ let existing=editingId!==null?activities.find(a=>a.id===editingId):null;
 let photoData=existing?.photo||"";
 let file=document.getElementById("photo").files[0];
 if(file) photoData=await new Promise(resolve=>{let r=new FileReader();r.onload=()=>resolve(r.result);r.readAsDataURL(file)});
+else if(selectedImageData) photoData=selectedImageData;
 let chosenColor=color.value;
 if(!existing && ["Arbitraje RFGM","Arbitraje RFEG","Marcaje RFGM","Clase de reglas RFGM","Curso RFEG","Comité CLUB","Comisión deportiva RFGM","Comisión de formación RFGM"].includes(type.value) && color.value==="#2563eb") chosenColor="#7c3aed";
 let obj={id:editingId!==null?editingId:Date.now(),type:type.value,date:date.value,endDate:(document.getElementById("endDate")?.value||date.value),time:time.value,place:place.value,people:people.value,specific:specific.value,notes:notes.value,status:st,color:activityColor({type:type.value}),important:important.checked,photo:photoData,tournament:tournament?.value||"",committee:committee?.value||"",course:course?.value||"",numRef:numRef?.value||"",referees:referees?.value||"",marking:marking?.checked||false};
