@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mi Agenda · Móvil</title>
+<style>
+:root{--bg:#f5f6f8;--card:#fff;--text:#17202a;--muted:#6b7280;--line:#e5e7eb;--accent:#2563eb;--done:#16a34a;--holiday:#dc2626}
+*{box-sizing:border-box} body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text)}
+header{background:#111827;color:white;padding:18px 24px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:5}
+header h1{font-size:20px;margin:0} header button{background:var(--accent);border:0;color:#fff;border-radius:10px;padding:10px 14px;font-weight:600;cursor:pointer}
+nav{display:flex;gap:8px;padding:12px 24px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:65px;z-index:4}
+nav button{border:0;background:transparent;padding:10px 14px;border-radius:9px;cursor:pointer;color:var(--muted);font-weight:600}
+nav button.active{background:#eef2ff;color:#1d4ed8}
+main{max-width:1200px;margin:24px auto;padding:0 18px}.view{display:none}.view.active{display:block}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}.card .big{font-size:28px;font-weight:700}.muted{color:var(--muted)}
+.section{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:18px}
+.activity{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--line)}.activity:last-child{border-bottom:0}
+.icon{font-size:24px;width:36px;text-align:center}.grow{flex:1}.activity strong{display:block}.meta{font-size:13px;color:var(--muted);margin-top:3px}
+.badge{font-size:12px;padding:4px 8px;border-radius:999px;background:#eff6ff;color:#1d4ed8}.badge.done{background:#ecfdf5;color:#15803d}.badge.holiday{background:#fef2f2;color:#b91c1c}.badge.cancel{background:#f3f4f6;color:#6b7280}.important{color:#dc2626;font-size:14px}.activity{border-left:5px solid var(--activity-color, #2563eb);padding-left:10px}.day.has-activity{box-shadow:inset 0 0 0 2px var(--activity-color, #2563eb)}.day.cancelled{opacity:.55}
+.calendar-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.calendar-head button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:8px 12px;cursor:pointer}
+.year-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.month{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px}.month h3{margin:0 0 9px;font-size:15px}.week{display:grid;grid-template-columns:repeat(7,1fr);font-size:10px;color:var(--muted);text-align:center}.days{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}.day{min-height:36px;border-radius:6px;padding:3px;font-size:11px;position:relative}.day.holiday{background:#fff1f2;color:#b91c1c}.day.today{outline:2px solid #93c5fd}.dot{font-size:9px;line-height:11px;white-space:nowrap;overflow:hidden}.empty{visibility:hidden}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:20;align-items:center;justify-content:center}.modal.open{display:flex}.modal-box{background:#fff;width:min(520px,92vw);border-radius:16px;padding:22px}.modal-box h2{margin-top:0}.form{display:grid;gap:11px}.form label{font-size:13px;font-weight:600}.form input,.form select,.form textarea{width:100%;padding:10px;border:1px solid #d1d5db;border-radius:9px;font:inherit}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.actions{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}.actions button{border:0;border-radius:9px;padding:10px 14px;cursor:pointer}.primary{background:var(--accent);color:white}.secondary{background:#f3f4f6}
+@media(max-width:850px){.year-grid{grid-template-columns:repeat(2,1fr)}.cards{grid-template-columns:1fr}.row{grid-template-columns:1fr}}
+@media(max-width:520px){.year-grid{grid-template-columns:1fr}header{padding:14px 16px}nav{padding:8px 12px;overflow:auto}main{margin:16px auto}}
+</style>
+<style id="mobile-v1">
+@media(max-width:700px){
+header{padding:12px;gap:8px;flex-wrap:wrap}
+header h1{font-size:18px;width:100%}
+header>div{width:100%;display:grid!important;grid-template-columns:1fr 1fr 1fr;gap:6px!important}
+header button{min-height:46px;padding:9px 6px;font-size:13px}
+nav{top:96px;padding:7px 8px;gap:4px;overflow-x:auto}
+nav button{white-space:nowrap;min-height:44px;padding:9px 10px;font-size:13px}
+main{padding:0 10px;margin:12px auto}
+.cards{gap:8px}.card{padding:12px}.card .big{font-size:24px}
+.section{padding:13px;border-radius:12px}
+.activity{align-items:flex-start;flex-wrap:wrap}.activity .grow{min-width:calc(100% - 44px)}
+.activity>.badge{margin-left:44px}.activity>button{margin-left:auto;min-height:42px}
+.row{grid-template-columns:1fr!important;gap:8px}
+.form input,.form select,.form textarea{min-height:46px;font-size:16px}.form button{min-height:44px}
+.modal{align-items:flex-end}.modal-box{width:100%;max-height:92vh;overflow:auto;border-radius:18px 18px 0 0;padding:17px}
+.year-grid{grid-template-columns:1fr!important}.month{padding:9px}.day{min-height:42px;font-size:12px}
+.calendar-head{position:sticky;top:96px;background:var(--bg);z-index:2;padding:7px 0}
+.calendar-head button{min-height:44px}
+#importExcel .primary{width:100%}
+}
+@media(max-width:380px){header>div{grid-template-columns:1fr 1fr}header>div button:last-of-type{grid-column:1/-1}}
+</style></head>
+<body>
+<header><h1>Mi Agenda de Actividades</h1><div style="display:flex;gap:8px"><button onclick="exportData()">Exportar</button><button onclick="document.getElementById('importFile').click()">Importar</button><button onclick="openModal()">＋ Nueva actividad</button><button onclick="document.getElementById('imageFile').click()">📷 Desde imagen</button></div><input id="importFile" type="file" accept=".json" style="display:none" onchange="importData(event)"><input id="imageFile" type="file" accept="image/*" capture="environment" style="display:none" onchange="previewImage(event)">
+</header></header><nav>
+<button class="tab active" onclick="showView('home',this)">Inicio</button>
+<button class="tab" onclick="showView('calendar',this)">Calendario anual</button>
+<button class="tab" onclick="showView('history',this)">Historial</button><button class="tab" onclick="showView('importExcel',this)">Importar tabla</button>
+</nav>
+<main>
+<section id="home" class="view active">
+<div class="cards">
+<div class="card"><div class="muted">Actividades este año</div><div class="big" id="countYear">0</div></div>
+<div class="card"><div class="muted">Próximas</div><div class="big" id="countUpcoming">0</div></div>
+<div class="card"><div class="muted">Días con actividad</div><div class="big" id="countDays">0</div></div>
+</div>
+<div class="section"><h2>Hoy</h2><div id="todayList"></div></div>
+<div class="section"><h2>Próximas actividades</h2><div id="upcomingList"></div></div>
+</section>
+
+<section id="calendar" class="view">
+<div class="calendar-head"><button onclick="changeYear(-1)">‹</button><h2 id="yearTitle"></h2><button onclick="changeYear(1)">›</button></div>
+<div class="section"><div class="muted" style="margin-bottom:12px">🔵 programada · 🟢 realizada · ⚪ cancelada · 🔴 festivo · ⭐ importante</div><div class="year-grid" id="yearGrid"></div></div>
+<div class="section"><h3>Festivos locales</h3><div class="muted">Puedes añadir tus festivos locales para que aparezcan en rojo en el calendario.</div><div class="row" style="margin-top:10px"><input id="localHolidayDate" type="date"><input id="localHolidayName" placeholder="Nombre del festivo"><button class="primary" onclick="addLocalHoliday()">Añadir festivo</button></div><div id="localHolidayList" style="margin-top:10px"></div></div>
+</section>
+
+<section id="history" class="view">
+<div class="section"><h2>Historial</h2><div class="row" style="margin-bottom:12px"><select id="filterType" onchange="renderHistory()"><option value="">Todas las actividades</option></select><select id="filterStatus" onchange="renderHistory()"><option value="">Todos los estados</option><option value="planned">Programadas</option><option value="done">Realizadas</option><option value="cancelled">Canceladas</option></select></div><div class="row" style="margin-bottom:12px"><input id="filterFrom" type="date" onchange="renderHistory()"><input id="filterTo" type="date" onchange="renderHistory()"></div><div id="historyList"></div></div>
+</section>
+<section id="importExcel" class="view"><div class="section"><h2>Importar tabla desde Excel</h2><p class="muted">Pega la tabla completa (desde Excel o desde el correo) y confirma la importación. Las columnas que conocemos se convierten en campos; los datos no reconocidos podrán conservarse en notas en una próxima ampliación.</p><button class="primary" onclick="importPastedTable()">📋 Pegar tabla de Excel</button></div></section></main>
+
+<div class="modal" id="modal">
+<div class="modal-box">
+<h2 id="modalTitle">Nueva actividad</h2>
+<form class="form" onsubmit="saveActivity(event)">
+<div><label>Actividad</label><select id="type" required onchange="toggleSpecificForm()"></select><button type="button" class="secondary" style="margin-top:6px" onclick="addActivityType()">＋ Añadir tipo</button></div>
+<div id="arbitrajeFields" class="section" style="display:none;margin:0;padding:14px;background:#f9fafb"><h3 style="margin-top:0">Datos del arbitraje RFGM</h3><div class="row"><div><label>Torneo</label><input id="tournament"></div><div><label>Comité</label><input id="committee"></div></div><div class="row"><div><label>Campo</label><input id="course"></div><div><label>N.º árbitros</label><input id="numRef" type="number" min="1" max="5"></div></div><div><label>Árbitros</label><input id="referees" placeholder="Principal; Árbitro 2; ..."></div><div><label><input id="marking" type="checkbox"> Marcaje</label></div></div><div class="row"><div><label>Fecha inicio</label><input id="date" type="date" required></div><div><label>Fecha fin <span class="muted">(opcional)</span></label><input id="endDate" type="date"></div><div><label>Hora (opcional)</label><input id="time" type="time"></div></div>
+<div class="row"><div><label>Dónde</label><input id="place" placeholder="Lugar"></div><div><label>Con quién</label><input id="people" placeholder="Personas"></div></div>
+<div class="row"><div><label>Color</label><select id="color"><option value="#2563eb">Azul</option><option value="#16a34a">Verde</option><option value="#dc2626">Rojo</option><option value="#9333ea">Morado</option><option value="#ea580c">Naranja</option><option value="#0891b2">Turquesa</option></select></div><div><label>Estado</label><select id="status"><option value="auto">Automático según fecha</option><option value="planned">Programada</option><option value="done">Realizada</option><option value="cancelled">Cancelada</option></select></div></div><div><label>Dato específico (opcional)</label><input id="specific" placeholder="Ej.: 35 puntos, 7-5, destino..."></div><div><label><input id="important" type="checkbox"> ⭐ Marcar como importante</label></div>
+<div><label>Notas (opcional)</label><textarea id="notes" rows="3"></textarea></div><div><label>Foto / captura (opcional)</label><input id="photo" type="file" accept="image/*" capture="environment"></div><div id="photoPreview"></div>
+
+<div class="actions"><button type="button" class="secondary" onclick="closeModal()">Cancelar</button><button type="button" class="secondary" id="deleteBtn" style="display:none" onclick="deleteActivity()">Eliminar</button><button class="primary">Guardar cambios</button></div>
+</form>
+</div>
+</div>
+
+<div class="modal" id="imageModal"><div class="modal-box"><h2>📷 Imagen seleccionada</h2><p class="muted">Prueba de selección de foto o pantallazo. En esta versión todavía no se reconocen los datos automáticamente.</p><div style="text-align:center"><img id="imagePreview" alt="Imagen seleccionada" style="max-width:100%;max-height:55vh;border-radius:10px;border:1px solid #e5e7eb"></div><div class="actions"><button type="button" class="secondary" onclick="closeImageModal()">Cerrar</button><button type="button" class="primary" onclick="useImageForActivity()">Usar para nueva actividad</button></div></div></div>
+
+<script>
+const types=[
+["Golf","🏌️"],["Arbitraje RFGM","⚖️"],["Arbitraje RFEG","⚖️"],["Marcaje RFGM","📍"],
+["Clase de reglas RFGM","📚"],["Curso RFEG","🎓"],["Comité CLUB","🏛️"],
+["Comisión deportiva RFGM","🏆"],["Comisión de formación RFGM","📚"],["Viaje","✈️"],["Billar","🎱"],["Fisio","💆"]
+];
+const holidays={
+"2026-01-01":"Año Nuevo","2026-01-06":"Epifanía del Señor","2026-04-03":"Viernes Santo",
+"2026-05-01":"Fiesta del Trabajo","2026-08-15":"Asunción de la Virgen","2026-10-12":"Fiesta Nacional de España",
+"2026-11-01":"Todos los Santos","2026-12-06":"Día de la Constitución","2026-12-08":"Inmaculada Concepción","2026-12-25":"Navidad"
+};
+let activities=JSON.parse(localStorage.getItem("myActivities")||"[]");
+let year=new Date().getFullYear();
+
+let localHolidays=JSON.parse(localStorage.getItem("myLocalHolidays")||"{}");
+let selectedImageData = null;
+function previewImage(event){const file=event.target.files&&event.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{selectedImageData=reader.result;document.getElementById("imagePreview").src=selectedImageData;document.getElementById("imageModal").classList.add("open");};reader.readAsDataURL(file);event.target.value="";}
+function closeImageModal(){document.getElementById("imageModal").classList.remove("open");}
+function useImageForActivity(){closeImageModal();openModal();const p=document.getElementById("photoPreview");if(p&&selectedImageData){p.innerHTML='<img src="'+selectedImageData+'" style="max-width:180px;max-height:180px;border-radius:10px;margin-top:6px">';}}
+
+function addLocalHoliday(){
+let d=document.getElementById("localHolidayDate").value,n=document.getElementById("localHolidayName").value.trim();
+if(!d||!n)return; localHolidays[d]=n; localStorage.setItem("myLocalHolidays",JSON.stringify(localHolidays)); document.getElementById("localHolidayName").value=""; render(); renderCalendar();
+}
+function allHolidays(){return {...holidays,...localHolidays}}
+function exportData(){
+let blob=new Blob([JSON.stringify({activities,localHolidays},null,2)],{type:"application/json"});
+let a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="mi-agenda-"+new Date().toISOString().slice(0,10)+".json";a.click();URL.revokeObjectURL(a.href);
+}
+function importData(e){
+let file=e.target.files[0];if(!file)return;
+let r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);if(Array.isArray(x.activities))activities=x.activities;if(x.localHolidays)localHolidays=x.localHolidays;save();localStorage.setItem("myLocalHolidays",JSON.stringify(localHolidays));render();alert("Datos importados correctamente.");}catch(err){alert("No se ha podido importar el fichero.");}};r.readAsText(file);
+}
+function toggleSpecificForm(){document.getElementById("arbitrajeFields").style.display=type.value==="Arbitraje RFGM"?"block":"none";}
+function addActivityType(){let n=prompt("Nombre del nuevo tipo de actividad:");if(!n||!n.trim())return;n=n.trim();let a=JSON.parse(localStorage.getItem("myCustomTypes")||"[]");if(!a.includes(n)){a.push(n);localStorage.setItem("myCustomTypes",JSON.stringify(a));}populateTypes();type.value=n;toggleSpecificForm();}
+function populateTypes(){let c=JSON.parse(localStorage.getItem("myCustomTypes")||"[]");document.getElementById("type").innerHTML=types.map(([n,i])=>`<option value="${n}">${i} ${n}</option>`).join("")+c.map(n=>`<option value="${n}">📌 ${n}</option>`).join("");}
+function renderHistory(){let ft=filterType?.value||"",fs=filterStatus?.value||"",f=filterFrom?.value||"",t=filterTo?.value||"";let arr=activities.filter(a=>(!ft||a.type===ft)&&(!fs||(a.status||"planned")===fs)&&(!f||a.date>=f)&&(!t||a.date<=t)).sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time));document.getElementById("historyList").innerHTML=arr.length?arr.map(item).join(""):"<span class='muted'>No hay actividades que coincidan.</span>";}
+function importPastedTable(){
+  const txt=prompt("Pega aquí la tabla completa (Excel, correo o tabla con |):");
+  if(!txt)return;
+  const rows=[];
+  for(const raw of txt.split(/\r?\n/)){
+    const line=raw.trim(); if(!line)continue;
+    let c;
+    if(line.includes("|")){
+      c=line.replace(/^\s*\|/,"").replace(/\|\s*$/,"").split("|").map(x=>x.replace(/\u00a0/g," ").trim());
+      if(c.every(x=>!x || /^:?-{2,}:?$/.test(x)))continue;
+    }else if(line.includes("\t")) c=line.split("\t").map(x=>x.trim());
+    else c=line.split(/\s{2,}/).map(x=>x.trim());
+    rows.push(c);
+  }
+  const norm=s=>(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim();
+  const months={ene:1,feb:2,mar:3,abr:4,may:5,jun:6,jul:7,ago:8,sep:9,sept:9,oct:10,nov:11,dic:12};
+  function pd(s){
+    s=norm(s).replace(/\s+/g,"");
+    let m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+    if(m){let y=m[3].length===2?"20"+m[3]:m[3];return `${y}-${String(m[2]).padStart(2,"0")}-${String(m[1]).padStart(2,"0")}`;}
+    m=s.match(/^(\d{1,2})[\/\-](ene|feb|mar|abr|may|jun|jul|ago|sep|sept|oct|nov|dic)[\/\-]?(\d{2,4})?$/i);
+    if(m){let y=m[3]?(m[3].length===2?"20"+m[3]:m[3]):"2026";return `${y}-${String(months[m[2]]).padStart(2,"0")}-${String(m[1]).padStart(2,"0")}`;}
+    return "";
+  }
+  const first=rows[0]||[], hd=first.map(norm);
+  const hasHeader=hd.some(x=>/fecha|actividad|curso|donde|lugar|campo|con|quien|arbitro|torneo|comite|marcaje/.test(x));
+  const body=hasHeader?rows.slice(1):rows;
+  const find=(ps,d)=>hasHeader?(ps.map(p=>hd.findIndex(x=>p.test(x))).find(i=>i>=0)??d):d;
+  const fi=find([/^fecha/,/inicio/],0), ei=find([/fecha fin/,/^fin/],-1), ai=find([/^actividad$/,/^curso$/,/^tipo/],1);
+  const li=find([/^donde$/,/^lugar$/,/^campo$/],2), pi=find([/^con$/,/quien/,/personas/],3), ti=find([/torneo/],2), ci=find([/^comite/,/comite/],3), mi=find([/marcaje/],11);
+  const imported=[];
+  body.forEach((r,k)=>{
+    const date=pd(r[fi]); if(!date)return;
+    const endDate=(ei>=0&&pd(r[ei]))||date;
+    const arb=/arbit|torneo|marcaje/i.test((r[ai]||"")+" "+(r[ti]||"")+" "+(r[mi]||""));
+    const refs=arb?r.slice(6,11).map(x=>(x||"").trim()).filter(Boolean):[];
+    const type=arb?"Arbitraje":((r[ai]||"").trim()||"Actividad");
+    imported.push({id:Date.now()+k,type,date,endDate,time:"",
+      place:arb?((r[4]||r[li]||"").trim()):((r[li]||"").trim()),
+      people:arb?refs.join("; "):((r[pi]||"").trim()),specific:"",notes:"",
+      status:endDate<=new Date().toISOString().slice(0,10)?"done":"planned",
+      color:activityColor({type}),important:false,photo:"",
+      tournament:arb?((r[ti]||"").trim()):"",committee:arb?((r[ci]||"").trim()):"",
+      course:arb?((r[4]||r[li]||"").trim()):"",numRef:arb?((r[5]||"").trim()):"",
+      referees:refs.join("; "),marking:arb?/^(si|sí|yes|x)$/i.test((r[mi]||"").trim()):false});
+  });
+  if(!imported.length){alert("No he encontrado actividades con fechas reconocibles.");return;}
+  const key=a=>[a.date,a.endDate||a.date,norm(a.type),norm(a.place),norm(a.people),norm(a.tournament)].join("|");
+  const existing=new Map(); activities.forEach(a=>existing.set(key(a),a));
+  const fresh=[],dups=[]; imported.forEach(a=>{const old=existing.get(key(a)); old?dups.push({newItem:a,oldItem:old}):fresh.push(a);});
+  if(!dups.length){
+    if(!confirm(`Se incorporarán ${fresh.length} actividades.\n\n¿Continuar?`))return;
+    activities=activities.concat(fresh);save();render();alert(`Se han incorporado ${fresh.length} actividades.`);return;
+  }
+  const choice=(prompt(`Se han detectado ${dups.length} posibles duplicadas.\n\nO = Omitir duplicadas\nA = Actualizar existentes\nC = Cancelar toda la importación`,"O")||"").trim().toUpperCase();
+  if(choice==="C"||!choice)return;
+  if(choice==="A"){
+    dups.forEach(d=>{const j=activities.findIndex(x=>x.id===d.oldItem.id);if(j>=0)activities[j]={...activities[j],...d.newItem,id:activities[j].id,color:activityColor(d.newItem)};});
+  }
+  activities=activities.concat(fresh);save();render();
+  alert(choice==="A"?`Actualizadas ${dups.length} y añadidas ${fresh.length} nuevas.`:`Omitidas ${dups.length} duplicadas y añadidas ${fresh.length} nuevas.`);
+}
+
+function activityColor(a){
+  const n=(a.type||"").toLowerCase();
+  if(n.includes("golf")) return "#2e7d32";
+  if(n.includes("arbit")) return "#7c3aed";
+  if(n.includes("curso") || n.includes("clase")) return "#2563eb";
+  if(n.includes("viaje")) return "#ea580c";
+  if(n.includes("billar")) return "#0891b2";
+  if(n.includes("fisio")) return "#db2777";
+  if(n.includes("comité") || n.includes("comite") || n.includes("comision") || n.includes("comisión")) return "#ca8a04";
+  return "#64748b";
+}
+
+function activityCoversDate(a, ds){
+  const start=a.date;
+  const end=a.endDate && a.endDate>=start ? a.endDate : start;
+  return ds>=start && ds<=end;
+}
+function init(){
+populateTypes();
+document.getElementById("date").value=new Date().toISOString().slice(0,10);
+  if(document.getElementById("endDate")) document.getElementById("endDate").value=a.endDate||a.date;
+render();
+}
+function save(){localStorage.setItem("myActivities",JSON.stringify(activities))}
+let editingId=null;
+function openModal(){
+editingId=null;
+document.getElementById("modalTitle").textContent="Nueva actividad";
+document.getElementById("deleteBtn").style.display="none";
+document.querySelector("#modal form").reset();
+document.getElementById("date").value=new Date().toISOString().slice(0,10);
+document.getElementById("status").value="auto";
+document.getElementById("photoPreview").innerHTML="";
+document.getElementById("modal").classList.add("open");
+}
+function editActivity(id){
+let a=activities.find(x=>x.id===id); if(!a)return;
+editingId=id;
+document.getElementById("modalTitle").textContent="Editar actividad";
+document.getElementById("deleteBtn").style.display="inline-block";
+type.value=a.type;date.value=a.date;document.getElementById("endDate").value=a.endDate||a.date;time.value=a.time||"";place.value=a.place||"";people.value=a.people||"";
+specific.value=a.specific||"";notes.value=a.notes||"";color.value=a.color||"#2563eb";
+status.value=a.status||((a.done||a.date<=new Date().toISOString().slice(0,10))?"done":"planned");
+important.checked=!!a.important;tournament.value=a.tournament||"";committee.value=a.committee||"";course.value=a.course||"";numRef.value=a.numRef||"";referees.value=a.referees||"";marking.checked=!!a.marking;toggleSpecificForm();
+document.getElementById("photoPreview").innerHTML=a.photo?`<img src="${a.photo}" style="max-width:100%;max-height:160px;border-radius:8px">`:"";
+document.getElementById("modal").classList.add("open");
+}
+function closeModal(){document.getElementById("modal").classList.remove("open")}
+function deleteActivity(){
+if(editingId===null)return;
+if(!confirm("¿Eliminar esta actividad? Esta acción no se puede deshacer."))return;activities=activities.filter(a=>a.id!==editingId);save();closeModal();render();
+}
+async function saveActivity(e){
+e.preventDefault();
+const endInput=document.getElementById("endDate");
+if(endInput && endInput.value && endInput.value<date.value){ alert("La fecha fin no puede ser anterior a la fecha de inicio."); return; }
+let st=status.value;
+if(st==="auto") st=(date.value <= new Date().toISOString().slice(0,10)) ? "done" : "planned";
+let existing=editingId!==null?activities.find(a=>a.id===editingId):null;
+let photoData=existing?.photo||"";
+let file=document.getElementById("photo").files[0];
+if(file) photoData=await new Promise(resolve=>{let r=new FileReader();r.onload=()=>resolve(r.result);r.readAsDataURL(file)});
+else if(selectedImageData) photoData=selectedImageData;
+let chosenColor=color.value;
+if(!existing && ["Arbitraje RFGM","Arbitraje RFEG","Marcaje RFGM","Clase de reglas RFGM","Curso RFEG","Comité CLUB","Comisión deportiva RFGM","Comisión de formación RFGM"].includes(type.value) && color.value==="#2563eb") chosenColor="#7c3aed";
+let obj={id:editingId!==null?editingId:Date.now(),type:type.value,date:date.value,endDate:(document.getElementById("endDate")?.value||date.value),time:time.value,place:place.value,people:people.value,specific:specific.value,notes:notes.value,status:st,color:activityColor({type:type.value}),important:important.checked,photo:photoData,tournament:tournament?.value||"",committee:committee?.value||"",course:course?.value||"",numRef:numRef?.value||"",referees:referees?.value||"",marking:marking?.checked||false};
+if(editingId!==null){let i=activities.findIndex(a=>a.id===editingId);activities[i]=obj}else activities.push(obj);
+save();closeModal();render();
+}
+function icon(t){return (types.find(x=>x[0]===t)||["","📌"])[1]}
+function fmt(d){return new Date(d+"T12:00:00").toLocaleDateString("es-ES",{day:"2-digit",month:"short",year:"numeric"})}
+function item(a){
+let st=a.status || (a.done?"done":(a.date<=new Date().toISOString().slice(0,10)?"done":"planned"));
+let label=st==="done"?"Realizada":st==="cancelled"?"Cancelada":"Programada";
+return `<div class="activity" style="--activity-color:${a.color||'#2563eb'}"><div class="icon">${icon(a.type)}</div><div class="grow"><strong>${a.type} ${a.important?"<span class='important'>★</span>":""}</strong><div class="meta">${fmt(a.date)}${a.time?" · "+a.time:""}${a.place?" · "+a.place:""}${a.people?" · Con "+a.people:""}${a.specific?" · "+a.specific:""}${a.type==="Arbitraje RFGM"&&a.tournament?" · "+a.tournament:""}${a.type==="Arbitraje RFGM"&&a.marking?" · Marcaje":""}</div></div><span class="badge ${st==="done"?"done":st==="cancelled"?"cancel":""}">${label}</span><button class="secondary" onclick="editActivity(${a.id})">Editar</button></div>`;
+}
+function render(){
+  activities.forEach(a=>a.color=activityColor(a));
+const today=new Date().toISOString().slice(0,10), start=today;
+const inYear=activities.filter(a=>a.date.startsWith(year));
+document.getElementById("countYear").textContent=inYear.length;
+document.getElementById("countUpcoming").textContent=activities.filter(a=>(a.status||"planned")==="planned"&&a.date>=start).length;
+document.getElementById("countDays").textContent=new Set(inYear.map(a=>a.date)).size;
+const todays=activities.filter(a=>a.date===today).sort((a,b)=>(a.time||"").localeCompare(b.time||""));
+document.getElementById("todayList").innerHTML=todays.length?todays.map(item).join(""):"<span class='muted'>No hay actividades registradas hoy.</span>";
+const upcoming=activities.filter(a=>(a.status||"planned")==="planned"&&a.date>=start).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time)).slice(0,8);
+document.getElementById("upcomingList").innerHTML=upcoming.length?upcoming.map(item).join(""):"<span class='muted'>No hay actividades programadas.</span>";
+const hist=activities.slice().sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time));
+document.getElementById("historyList").innerHTML=hist.length?hist.map(item).join(""):"<span class='muted'>Todavía no hay actividades.</span>";if(typeof filterType!=="undefined"){filterType.innerHTML='<option value="">Todas las actividades</option>'+types.map(x=>`<option value="${x[0]}">${x[0]}</option>`).join("");}
+document.getElementById("localHolidayList").innerHTML=Object.entries(localHolidays).sort().map(([d,n])=>`<div class="activity"><div class="grow"><strong>🔴 ${n}</strong><div class="meta">${fmt(d)}</div></div><button class="secondary" onclick="deleteLocalHoliday('${d}')">Eliminar</button></div>`).join("")||"<span class='muted'>No hay festivos locales añadidos.</span>";
+renderCalendar();
+}
+function deleteLocalHoliday(d){delete localHolidays[d];localStorage.setItem("myLocalHolidays",JSON.stringify(localHolidays));render();}
+function changeYear(n){year+=n;renderCalendar()}
+function renderCalendar(){
+document.getElementById("yearTitle").textContent="Calendario "+year;
+const holidayMap=allHolidays();
+const names=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+const week=["L","M","X","J","V","S","D"];
+let out="";
+for(let m=0;m<12;m++){
+let first=new Date(year,m,1), last=new Date(year,m+1,0), offset=(first.getDay()+6)%7;
+out+=`<div class="month"><h3>${names[m]}</h3><div class="week">${week.map(x=>`<div>${x}</div>`).join("")}</div><div class="days">`;
+for(let i=0;i<offset;i++)out+="<div class='day empty'>0</div>";
+for(let d=1;d<=last.getDate();d++){
+let ds=`${year}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+let as=activities.filter(a=>activityCoversDate(a,ds)), hol=holidayMap[ds], today=ds===new Date().toISOString().slice(0,10);
+let primary=as.find(a=>(a.status||"planned")!=="cancelled")||as[0];
+let colors=[...new Set(as.map(a=>a.color||'#2563eb'))];
+let border="";
+if(colors.length===1){
+  const c=colors[0], span=as.length?as[0]:null;
+  const multi=span && span.endDate && span.endDate>span.date && activityCoversDate(span,ds);
+  if(multi){
+    const firstDay=ds===span.date, lastDay=ds===span.endDate;
+    border=`border-top:3px solid ${c};border-bottom:3px solid ${c};${firstDay?"border-left:3px solid "+c+";border-top-left-radius:8px;border-bottom-left-radius:8px;":""}${lastDay?"border-right:3px solid "+c+";border-top-right-radius:8px;border-bottom-right-radius:8px;":""}`;
+  }else border=`border:3px solid ${c}`;
+}else if(colors.length>1){
+  border=`border:3px solid transparent;background:linear-gradient(#fff,#fff) padding-box,linear-gradient(90deg,${colors.join(',')}) border-box`;
+}
+out+=`<div class="day ${hol?"holiday":""} ${today?"today":""}" style="${border}" title="${hol||""}" onclick="dayClick('${ds}')"><b>${d}</b>${as.slice(0,3).map(a=>`<div class="dot">${(a.status||"planned")==="done"?"🟢":(a.status||"planned")==="cancelled"?"⚪":"🔵"} ${icon(a.type)}${a.important?"★":""}</div>`).join("")}${as.length>3?`<div class="dot">+${as.length-3}</div>`:""}</div>`;
+}
+out+="</div></div>";
+}
+document.getElementById("yearGrid").innerHTML=out;
+}
+function dayClick(ds){
+let same=activities.filter(a=>activityCoversDate(a,ds));
+if(same.length===1){ editActivity(same[0].id); } else { openModal(); document.getElementById("date").value=ds; }
+}
+function showView(id,btn){
+document.querySelectorAll(".view").forEach(x=>x.classList.remove("active"));
+document.getElementById(id).classList.add("active");
+document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));btn.classList.add("active");
+if(id==="calendar")renderCalendar();
+}
+init();
+</script>
+</body>
+</html>
