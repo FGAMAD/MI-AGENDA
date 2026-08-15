@@ -46,9 +46,9 @@ main{padding:0 10px;margin:12px auto}
 #importExcel .primary{width:100%}
 }
 @media(max-width:380px){header>div{grid-template-columns:1fr 1fr}header>div button:last-of-type{grid-column:1/-1}}
-</style></head>
+</style><style id="image-choice-mobile">@media(max-width:700px){#imageChoiceModal .actions{display:grid!important;grid-template-columns:1fr!important}#imageChoiceModal button{width:100%;min-height:50px;font-size:16px}}</style></head>
 <body>
-<header><h1>Mi Agenda de Actividades</h1><div style="display:flex;gap:8px"><button onclick="exportData()">Exportar</button><button onclick="document.getElementById('importFile').click()">Importar</button><button onclick="openModal()">＋ Nueva actividad</button><button onclick="document.getElementById('imageFile').click()">📷 Desde imagen</button></div><input id="importFile" type="file" accept=".json" style="display:none" onchange="importData(event)"><input id="imageFile" type="file" accept="image/*" capture="environment" style="display:none" onchange="previewImage(event)">
+<header><h1>Mi Agenda de Actividades</h1><div style="display:flex;gap:8px"><button onclick="exportData()">Exportar</button><button onclick="document.getElementById('importFile').click()">Importar</button><button onclick="openModal()">＋ Nueva actividad</button><button onclick="openImageChoice()">📷 Desde imagen</button></div><input id="importFile" type="file" accept=".json" style="display:none" onchange="importData(event)"><input id="imageFileCamera" type="file" accept="image/*" capture="environment" style="display:none" onchange="previewImage(event)"><input id="imageFileGallery" type="file" accept="image/*" style="display:none" onchange="previewImage(event)">
 </header></header><nav>
 <button class="tab active" onclick="showView('home',this)">Inicio</button>
 <button class="tab" onclick="showView('calendar',this)">Calendario anual</button>
@@ -84,12 +84,14 @@ main{padding:0 10px;margin:12px auto}
 <div id="arbitrajeFields" class="section" style="display:none;margin:0;padding:14px;background:#f9fafb"><h3 style="margin-top:0">Datos del arbitraje RFGM</h3><div class="row"><div><label>Torneo</label><input id="tournament"></div><div><label>Comité</label><input id="committee"></div></div><div class="row"><div><label>Campo</label><input id="course"></div><div><label>N.º árbitros</label><input id="numRef" type="number" min="1" max="5"></div></div><div><label>Árbitros</label><input id="referees" placeholder="Principal; Árbitro 2; ..."></div><div><label><input id="marking" type="checkbox"> Marcaje</label></div></div><div class="row"><div><label>Fecha inicio</label><input id="date" type="date" required></div><div><label>Fecha fin <span class="muted">(opcional)</span></label><input id="endDate" type="date"></div><div><label>Hora (opcional)</label><input id="time" type="time"></div></div>
 <div class="row"><div><label>Dónde</label><input id="place" placeholder="Lugar"></div><div><label>Con quién</label><input id="people" placeholder="Personas"></div></div>
 <div class="row"><div><label>Color</label><select id="color"><option value="#2563eb">Azul</option><option value="#16a34a">Verde</option><option value="#dc2626">Rojo</option><option value="#9333ea">Morado</option><option value="#ea580c">Naranja</option><option value="#0891b2">Turquesa</option></select></div><div><label>Estado</label><select id="status"><option value="auto">Automático según fecha</option><option value="planned">Programada</option><option value="done">Realizada</option><option value="cancelled">Cancelada</option></select></div></div><div><label>Dato específico (opcional)</label><input id="specific" placeholder="Ej.: 35 puntos, 7-5, destino..."></div><div><label><input id="important" type="checkbox"> ⭐ Marcar como importante</label></div>
-<div><label>Notas (opcional)</label><textarea id="notes" rows="3"></textarea></div><div><label>Foto / captura (opcional)</label><input id="photo" type="file" accept="image/*" capture="environment"></div><div id="photoPreview"></div>
+<div><label>Notas (opcional)</label><textarea id="notes" rows="3"></textarea></div><div><label>Foto / captura (opcional)</label><div class="actions"><button type="button" class="secondary" onclick="chooseFormCamera()">📸 Cámara</button><button type="button" class="secondary" onclick="chooseFormGallery()">🖼️ Fotos</button></div><input id="photo" type="file" accept="image/*" style="display:none" onchange="previewFormPhoto(event)"><div id="photoPreview"></div></div>
 
 <div class="actions"><button type="button" class="secondary" onclick="closeModal()">Cancelar</button><button type="button" class="secondary" id="deleteBtn" style="display:none" onclick="deleteActivity()">Eliminar</button><button class="primary">Guardar cambios</button></div>
 </form>
 </div>
 </div>
+
+<div class="modal" id="imageChoiceModal"><div class="modal-box"><h2>📷 Añadir imagen</h2><p class="muted">Elige cómo quieres añadir la imagen.</p><div class="actions" style="display:grid;grid-template-columns:1fr;gap:10px"><button type="button" class="primary" onclick="chooseCamera()">📸 Hacer una foto</button><button type="button" class="secondary" onclick="chooseGallery()">🖼️ Elegir de Fotos</button><button type="button" class="secondary" onclick="closeImageChoice()">Cancelar</button></div></div></div>
 
 <div class="modal" id="imageModal"><div class="modal-box"><h2>📷 Imagen seleccionada</h2><p class="muted">Prueba de selección de foto o pantallazo. En esta versión todavía no se reconocen los datos automáticamente.</p><div style="text-align:center"><img id="imagePreview" alt="Imagen seleccionada" style="max-width:100%;max-height:55vh;border-radius:10px;border:1px solid #e5e7eb"></div><div class="actions"><button type="button" class="secondary" onclick="closeImageModal()">Cerrar</button><button type="button" class="primary" onclick="useImageForActivity()">Usar para nueva actividad</button></div></div></div>
 
@@ -109,6 +111,13 @@ let year=new Date().getFullYear();
 
 let localHolidays=JSON.parse(localStorage.getItem("myLocalHolidays")||"{}");
 let selectedImageData = null;
+function openImageChoice(){document.getElementById("imageChoiceModal").classList.add("open");}
+function closeImageChoice(){document.getElementById("imageChoiceModal").classList.remove("open");}
+function chooseCamera(){closeImageChoice();document.getElementById("imageFileCamera").click();}
+function chooseGallery(){closeImageChoice();document.getElementById("imageFileGallery").click();}
+function chooseFormCamera(){document.getElementById("photo").setAttribute("capture","environment");document.getElementById("photo").click();}
+function chooseFormGallery(){document.getElementById("photo").removeAttribute("capture");document.getElementById("photo").click();}
+function previewFormPhoto(event){const file=event.target.files&&event.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{selectedImageData=reader.result;document.getElementById("photoPreview").innerHTML='<img src="'+selectedImageData+'" style="max-width:100%;max-height:180px;border-radius:10px;margin-top:6px">';};reader.readAsDataURL(file);}
 function previewImage(event){const file=event.target.files&&event.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{selectedImageData=reader.result;document.getElementById("imagePreview").src=selectedImageData;document.getElementById("imageModal").classList.add("open");};reader.readAsDataURL(file);event.target.value="";}
 function closeImageModal(){document.getElementById("imageModal").classList.remove("open");}
 function useImageForActivity(){closeImageModal();openModal();const p=document.getElementById("photoPreview");if(p&&selectedImageData){p.innerHTML='<img src="'+selectedImageData+'" style="max-width:180px;max-height:180px;border-radius:10px;margin-top:6px">';}}
