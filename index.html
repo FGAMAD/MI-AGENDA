@@ -46,7 +46,13 @@ main{padding:0 10px;margin:12px auto}
 #importExcel .primary{width:100%}
 }
 @media(max-width:380px){header>div{grid-template-columns:1fr 1fr}header>div button:last-of-type{grid-column:1/-1}}
-</style><style id="image-choice-mobile">@media(max-width:700px){#imageChoiceModal .actions{display:grid!important;grid-template-columns:1fr!important}#imageChoiceModal button{width:100%;min-height:50px;font-size:16px}}</style></head>
+</style><style id="image-choice-mobile">@media(max-width:700px){#imageChoiceModal .actions{display:grid!important;grid-template-columns:1fr!important}#imageChoiceModal button{width:100%;min-height:50px;font-size:16px}}</style><script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<style>
+#ocrStatus{margin-top:10px;font-size:14px}.ocr-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ocr-grid label{font-size:12px;color:#6b7280}.ocr-grid input{width:100%;box-sizing:border-box;min-height:42px}
+@media(max-width:700px){.ocr-grid{grid-template-columns:1fr}}
+</style>
+</head>
 <body>
 <header><h1>Mi Agenda de Actividades</h1><div style="display:flex;gap:8px"><button onclick="exportData()">Exportar</button><button onclick="document.getElementById('importFile').click()">Importar</button><button onclick="openModal()">＋ Nueva actividad</button><button onclick="openImageChoice()">📷 Desde imagen</button></div><input id="importFile" type="file" accept=".json" style="display:none" onchange="importData(event)"><input id="imageFileCamera" type="file" accept="image/*" capture="environment" style="display:none" onchange="previewImage(event)"><input id="imageFileGallery" type="file" accept="image/*" style="display:none" onchange="previewImage(event)">
 </header></header><nav>
@@ -93,7 +99,22 @@ main{padding:0 10px;margin:12px auto}
 
 <div class="modal" id="imageChoiceModal"><div class="modal-box"><h2>📷 Añadir imagen</h2><p class="muted">Elige cómo quieres añadir la imagen.</p><div class="actions" style="display:grid;grid-template-columns:1fr;gap:10px"><button type="button" class="primary" onclick="chooseCamera()">📸 Hacer una foto</button><button type="button" class="secondary" onclick="chooseGallery()">🖼️ Elegir de Fotos</button><button type="button" class="secondary" onclick="closeImageChoice()">Cancelar</button></div></div></div>
 
-<div class="modal" id="imageModal"><div class="modal-box"><h2>📷 Imagen seleccionada</h2><p class="muted">Prueba de selección de foto o pantallazo. En esta versión todavía no se reconocen los datos automáticamente.</p><div style="text-align:center"><img id="imagePreview" alt="Imagen seleccionada" style="max-width:100%;max-height:55vh;border-radius:10px;border:1px solid #e5e7eb"></div><div class="actions"><button type="button" class="secondary" onclick="closeImageModal()">Cerrar</button><button type="button" class="primary" onclick="useImageForActivity()">Usar para nueva actividad</button></div></div></div>
+<div class="modal" id="imageModal"><div class="modal-box"><h2>📷 Imagen seleccionada</h2>
+<p class="muted">Ahora podemos intentar leer el contenido del pantallazo. Los datos son una propuesta y se pueden corregir antes de guardar.</p>
+<div style="text-align:center"><img id="imagePreview" alt="Imagen seleccionada" style="max-width:100%;max-height:45vh;border-radius:10px;border:1px solid #e5e7eb"></div>
+<div class="actions"><button type="button" class="primary" onclick="analyzeSelectedImage()">🔎 Analizar imagen</button><button type="button" class="secondary" onclick="closeImageModal()">Cerrar</button></div>
+<div id="ocrStatus"></div>
+<div id="ocrResult" style="display:none;margin-top:12px">
+<h3 style="margin:8px 0">Datos detectados</h3>
+<div class="ocr-grid">
+<div><label>Actividad</label><input id="ocrType"></div>
+<div><label>Fecha</label><input id="ocrDate" type="date"></div>
+<div><label>Hora</label><input id="ocrTime" type="time"></div>
+<div><label>Lugar</label><input id="ocrPlace"></div>
+</div>
+<div style="margin-top:8px"><label>Información adicional</label><textarea id="ocrNotes" rows="4" style="width:100%;box-sizing:border-box"></textarea></div>
+<div class="actions" style="margin-top:10px"><button type="button" class="primary" onclick="useOCRForActivity()">Revisar y crear actividad</button></div>
+</div></div></div>
 
 <script>
 const types=[
@@ -120,6 +141,74 @@ function chooseFormGallery(){document.getElementById("photo").removeAttribute("c
 function previewFormPhoto(event){const file=event.target.files&&event.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{selectedImageData=reader.result;document.getElementById("photoPreview").innerHTML='<img src="'+selectedImageData+'" style="max-width:100%;max-height:180px;border-radius:10px;margin-top:6px">';};reader.readAsDataURL(file);}
 function previewImage(event){const file=event.target.files&&event.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{selectedImageData=reader.result;document.getElementById("imagePreview").src=selectedImageData;document.getElementById("imageModal").classList.add("open");};reader.readAsDataURL(file);event.target.value="";}
 function closeImageModal(){document.getElementById("imageModal").classList.remove("open");}
+
+function normalizeText(s){return (s||"").replace(/\r/g,"").replace(/[ \t]+/g," ").trim();}
+function firstMatch(text,re){const m=text.match(re);return m?normalizeText(m[1]||m[0]):"";}
+function parseDateToISO(text){
+  let m=text.match(/\b(\d{1,2})[\/.-](\d{1,2})[\/.-](20\d{2})\b/);
+  if(m)return `${m[3]}-${String(m[2]).padStart(2,"0")}-${String(m[1]).padStart(2,"0")}`;
+  const months={enero:1,febrero:2,marzo:3,abril:4,mayo:5,junio:6,julio:7,agosto:8,septiembre:9,setiembre:9,octubre:10,noviembre:11,diciembre:12};
+  m=text.toLowerCase().match(/\b(\d{1,2})\s+de\s+([a-záéíóú]+)\s+(?:de\s+)?(20\d{2})\b/);
+  if(m&&months[m[2]])return `${m[3]}-${String(months[m[2]]).padStart(2,"0")}-${String(m[1]).padStart(2,"0")}`;
+  return "";
+}
+function parseOCR(text){
+  const lines=text.split("\n").map(normalizeText).filter(Boolean);
+  const joined=lines.join("\n");
+  let date=parseDateToISO(joined);
+  let time=firstMatch(joined,/\b(\d{1,2}[:.]\d{2})\s*(?:h|hrs?|horas)?\b/i).replace(".",":");
+  if(time && !/^\d{1,2}:\d{2}$/.test(time)) time="";
+  let place=firstMatch(joined,/(?:lugar|campo|club|sede)\s*[:\-]\s*([^\n]+)/i);
+  let type=firstMatch(joined,/(?:actividad|evento|torneo|campeonato)\s*[:\-]\s*([^\n]+)/i);
+  if(!type){
+    const hit=lines.find(x=>/arbitraje|arbitro|golf|torneo|campeonato|circuito|reserva/i.test(x));
+    type=hit||"";
+  }
+  if(!place){
+    const hit=lines.find(x=>/centro nacional|real club|club de golf|golf santander|puerta de hierro|la moraleja|jarama|dehesa|villa de madrid|campo\s*[123]/i.test(x));
+    place=hit||"";
+  }
+  // Keep useful context but avoid dumping the whole OCR into Notes.
+  const useful=lines.filter(x=>x.length>8 && !/^(fecha|hora|lugar|campo|club|actividad)\s*[:\-]?$/i.test(x));
+  let notes=useful.slice(0,8).join(" · ");
+  if(/comité técnico de reglas|designad[oa]\s+por|uniformidad|ruta 365/i.test(joined)) type=type||"Arbitraje RFEG";
+  if(/centro nacional de golf/i.test(joined)) place=place||"Centro Nacional de Golf";
+  return {type,date,time,place,notes,raw:text};
+}
+async function analyzeSelectedImage(){
+  if(!selectedImageData)return;
+  const status=document.getElementById("ocrStatus");
+  status.textContent="🔎 Analizando la imagen… puede tardar unos segundos la primera vez.";
+  try{
+    const result=await Tesseract.recognize(selectedImageData,"spa+eng",{logger:m=>{
+      if(m.status==="recognizing text") status.textContent=`🔎 Leyendo imagen… ${Math.round((m.progress||0)*100)}%`;
+    }});
+    const p=parseOCR(result.data.text||"");
+    document.getElementById("ocrType").value=p.type;
+    document.getElementById("ocrDate").value=p.date;
+    document.getElementById("ocrTime").value=p.time;
+    document.getElementById("ocrPlace").value=p.place;
+    document.getElementById("ocrNotes").value=p.notes;
+    document.getElementById("ocrResult").style.display="block";
+    status.textContent="✅ Lectura terminada. Revisa los datos antes de crear la actividad.";
+  }catch(e){
+    status.textContent="❌ No se ha podido leer la imagen. Puedes usarla igualmente como anexo.";
+    console.error(e);
+  }
+}
+function useOCRForActivity(){
+  closeImageModal();
+  openModal();
+  if(document.getElementById("ocrType").value) {
+    let found=[...type.options].find(o=>o.textContent.toLowerCase()===document.getElementById("ocrType").value.toLowerCase());
+    if(found) type.value=found.value;
+  }
+  if(document.getElementById("ocrDate").value) date.value=document.getElementById("ocrDate").value;
+  if(document.getElementById("ocrTime").value) time.value=document.getElementById("ocrTime").value;
+  if(document.getElementById("ocrPlace").value) place.value=document.getElementById("ocrPlace").value;
+  if(document.getElementById("ocrNotes").value) notes.value=document.getElementById("ocrNotes").value;
+  document.getElementById("photoPreview").innerHTML='<img src="'+selectedImageData+'" style="max-width:180px;max-height:180px;border-radius:10px;margin-top:6px">';
+}
 function useImageForActivity(){closeImageModal();openModal();const p=document.getElementById("photoPreview");if(p&&selectedImageData){p.innerHTML='<img src="'+selectedImageData+'" style="max-width:180px;max-height:180px;border-radius:10px;margin-top:6px">';}}
 
 function addLocalHoliday(){
