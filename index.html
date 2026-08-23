@@ -110,7 +110,7 @@ main{padding:0 10px;margin:12px auto}
 <div><label>Actividad</label><input id="ocrType"></div>
 <div><label>Fecha</label><input id="ocrDate" type="date"></div>
 <div><label>Hora</label><input id="ocrTime" type="time"></div>
-<div><label>Lugar</label><input id="ocrPlace"></div>
+<div><label>Lugar</label><input id="ocrPlace"></div><div><label>Campeonato / evento</label><input id="ocrEvent"></div>
 </div>
 <div style="margin-top:8px"><label>Información adicional</label><textarea id="ocrNotes" rows="4" style="width:100%;box-sizing:border-box"></textarea></div>
 <div class="actions" style="margin-top:10px"><button type="button" class="primary" onclick="useOCRForActivity()">Revisar y crear actividad</button></div>
@@ -153,27 +153,23 @@ function parseDateToISO(text){
   return "";
 }
 function parseOCR(text){
-  const lines=text.split("\n").map(normalizeText).filter(Boolean);
-  const joined=lines.join("\n");
-  let date=parseDateToISO(joined);
-  let time=firstMatch(joined,/\b(\d{1,2}[:.]\d{2})\s*(?:h|hrs?|horas)?\b/i).replace(".",":");
-  if(time && !/^\d{1,2}:\d{2}$/.test(time)) time="";
-  let place=firstMatch(joined,/(?:lugar|campo|club|sede)\s*[:\-]\s*([^\n]+)/i);
-  let type=firstMatch(joined,/(?:actividad|evento|torneo|campeonato)\s*[:\-]\s*([^\n]+)/i);
-  if(!type){
-    const hit=lines.find(x=>/arbitraje|arbitro|golf|torneo|campeonato|circuito|reserva/i.test(x));
-    type=hit||"";
-  }
-  if(!place){
-    const hit=lines.find(x=>/centro nacional|real club|club de golf|golf santander|puerta de hierro|la moraleja|jarama|dehesa|villa de madrid|campo\s*[123]/i.test(x));
-    place=hit||"";
-  }
-  // Keep useful context but avoid dumping the whole OCR into Notes.
-  const useful=lines.filter(x=>x.length>8 && !/^(fecha|hora|lugar|campo|club|actividad)\s*[:\-]?$/i.test(x));
-  let notes=useful.slice(0,8).join(" · ");
-  if(/comité técnico de reglas|designad[oa]\s+por|uniformidad|ruta 365/i.test(joined)) type=type||"Arbitraje RFEG";
-  if(/centro nacional de golf/i.test(joined)) place=place||"Centro Nacional de Golf";
-  return {type,date,time,place,notes,raw:text};
+  const rawOriginal=(text||"").replace(/\r/g,"");
+  const raw=rawOriginal.replace(/\s+/g," ").trim();
+  const lines=rawOriginal.split("\n").map(normalizeText).filter(Boolean);
+  const months={enero:1,febrero:2,marzo:3,abril:4,mayo:5,junio:6,julio:7,agosto:8,septiembre:9,setiembre:9,octubre:10,noviembre:11,diciembre:12};
+  let date="",m=raw.match(/\b(\d{1,2})\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)(?:\s+de\s+(20\d{2}))?\b/i);
+  if(m){const y=m[3]?Number(m[3]):2026;date=`${y}-${String(months[m[2].toLowerCase()]).padStart(2,"0")}-${String(m[1]).padStart(2,"0")}`;}
+  else{m=raw.match(/\b(\d{1,2})[\/.-](\d{1,2})[\/.-](20\d{2})\b/);if(m)date=`${m[3]}-${String(m[2]).padStart(2,"0")}-${String(m[1]).padStart(2,"0")}`;}
+  let type="";
+  if(/comit[ée]\s+t[ée]cnico\s+de\s+reglas|[áa]rbitro\s+principal|designad[oa]\s+por.*reglas|acta.*[áa]rbitro|uniformidad.*oficial/i.test(raw)) type="Arbitraje RFEG";
+  else if(/reserva|campo\s*[123]|hora\s*\d{1,2}[:.]\d{2}|torneo|campeonato|circuito/i.test(raw)) type="Golf";
+  let place="";
+  if(/centro nacional de golf/i.test(raw)) place="Centro Nacional de Golf";
+  else {place=firstMatch(raw,/(?:lugar|campo|club|sede)\s*[:\-]\s*([^\n]+)/i).replace(/^[o•·]\s*/,"");}
+  let event="";m=raw.match(/\b(Final\s+RUTA\s*365)\b/i);if(m)event="Final RUTA 365";else event=firstMatch(raw,/(?:evento|torneo|campeonato)\s*[:\-]\s*([^\n]+)/i);
+  let time=firstMatch(raw,/\b(\d{1,2}[:.]\d{2})\s*(?:h|hrs?|horas)?\b/i).replace(".",":");if(time&&!/^\d{1,2}:\d{2}$/.test(time))time="";
+  let notes=lines.filter(x=>x.length>8).slice(0,12).join(" · ");if(event&&!notes.toLowerCase().includes(event.toLowerCase()))notes=event+(notes?" · "+notes:"");
+  return {type,date,time,place,notes,event,raw:rawOriginal};
 }
 async function analyzeSelectedImage(){
   if(!selectedImageData)return;
@@ -188,7 +184,9 @@ async function analyzeSelectedImage(){
     document.getElementById("ocrDate").value=p.date;
     document.getElementById("ocrTime").value=p.time;
     document.getElementById("ocrPlace").value=p.place;
+    document.getElementById("ocrEvent").value=p.event||"";
     document.getElementById("ocrNotes").value=p.notes;
+    if(!p.date) status.textContent="⚠️ No he podido determinar la fecha. Revísala antes de crear la actividad.";
     document.getElementById("ocrResult").style.display="block";
     status.textContent="✅ Lectura terminada. Revisa los datos antes de crear la actividad.";
   }catch(e){
@@ -197,17 +195,52 @@ async function analyzeSelectedImage(){
   }
 }
 function useOCRForActivity(){
+  // Apply OCR values AFTER opening the modal, because openModal() can reset
+  // the form to the default activity/date on iPhone/Safari.
+  const ocrType=document.getElementById("ocrType").value.trim();
+  const ocrDate=document.getElementById("ocrDate").value;
+  const ocrTime=document.getElementById("ocrTime").value;
+  const ocrPlace=document.getElementById("ocrPlace").value.trim();
+  const ocrEvent=document.getElementById("ocrEvent").value.trim();
+  const ocrNotes=document.getElementById("ocrNotes").value.trim();
+
   closeImageModal();
   openModal();
-  if(document.getElementById("ocrType").value) {
-    let found=[...type.options].find(o=>o.textContent.toLowerCase()===document.getElementById("ocrType").value.toLowerCase());
-    if(found) type.value=found.value;
+
+  const typeEl=document.getElementById("type");
+  const dateEl=document.getElementById("date");
+  const timeEl=document.getElementById("time");
+  const placeEl=document.getElementById("place");
+  const notesEl=document.getElementById("notes");
+
+  if(ocrType){
+    const wanted=ocrType.toLowerCase();
+    let found=[...typeEl.options].find(
+      o=>o.textContent.toLowerCase().trim()===wanted
+    );
+    if(!found && wanted.includes("arbitraje")){
+      found=[...typeEl.options].find(
+        o=>o.textContent.toLowerCase().includes("arbitraje")
+      );
+    }
+    if(found) typeEl.value=found.value;
   }
-  if(document.getElementById("ocrDate").value) date.value=document.getElementById("ocrDate").value;
-  if(document.getElementById("ocrTime").value) time.value=document.getElementById("ocrTime").value;
-  if(document.getElementById("ocrPlace").value) place.value=document.getElementById("ocrPlace").value;
-  if(document.getElementById("ocrNotes").value) notes.value=document.getElementById("ocrNotes").value;
-  document.getElementById("photoPreview").innerHTML='<img src="'+selectedImageData+'" style="max-width:180px;max-height:180px;border-radius:10px;margin-top:6px">';
+
+  if(ocrDate) dateEl.value=ocrDate;
+  if(ocrTime) timeEl.value=ocrTime;
+  if(ocrPlace) placeEl.value=ocrPlace;
+  if(ocrEvent || ocrNotes){
+    notesEl.value=ocrEvent
+      ? (ocrEvent+(ocrNotes?" · ":"")+ocrNotes)
+      : ocrNotes;
+  }
+
+  if(typeof toggleSpecificForm==="function") toggleSpecificForm();
+
+  if(selectedImageData){
+    document.getElementById("photoPreview").innerHTML=
+      '<img src="'+selectedImageData+'" style="max-width:180px;max-height:180px;border-radius:10px;margin-top:6px">';
+  }
 }
 function useImageForActivity(){closeImageModal();openModal();const p=document.getElementById("photoPreview");if(p&&selectedImageData){p.innerHTML='<img src="'+selectedImageData+'" style="max-width:180px;max-height:180px;border-radius:10px;margin-top:6px">';}}
 
