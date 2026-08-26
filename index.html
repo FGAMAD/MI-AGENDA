@@ -153,22 +153,27 @@ function parseDateToISO(text){
   return "";
 }
 function parseOCR(text){
-  const rawOriginal=(text||"").replace(/\r/g,"");
-  const raw=rawOriginal.replace(/\s+/g," ").trim();
-  const lines=rawOriginal.split("\n").map(normalizeText).filter(Boolean);
+  const rawOriginal=(text||'').replace(/\r/g,'');
+  const raw=rawOriginal.replace(/\s+/g,' ').trim();
+  const lines=rawOriginal.split('\n').map(normalizeText).filter(Boolean);
   const months={enero:1,febrero:2,marzo:3,abril:4,mayo:5,junio:6,julio:7,agosto:8,septiembre:9,setiembre:9,octubre:10,noviembre:11,diciembre:12};
-  let date="",m=raw.match(/\b(\d{1,2})\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)(?:\s+de\s+(20\d{2}))?\b/i);
-  if(m){const y=m[3]?Number(m[3]):2026;date=`${y}-${String(months[m[2].toLowerCase()]).padStart(2,"0")}-${String(m[1]).padStart(2,"0")}`;}
-  else{m=raw.match(/\b(\d{1,2})[\/.-](\d{1,2})[\/.-](20\d{2})\b/);if(m)date=`${m[3]}-${String(m[2]).padStart(2,"0")}-${String(m[1]).padStart(2,"0")}`;}
-  let type="";
-  if(/comit[ée]\s+t[ée]cnico\s+de\s+reglas|[áa]rbitro\s+principal|designad[oa]\s+por.*reglas|acta.*[áa]rbitro|uniformidad.*oficial/i.test(raw)) type="Arbitraje RFEG";
-  else if(/reserva|campo\s*[123]|hora\s*\d{1,2}[:.]\d{2}|torneo|campeonato|circuito/i.test(raw)) type="Golf";
-  let place="";
-  if(/centro nacional de golf/i.test(raw)) place="Centro Nacional de Golf";
-  else {place=firstMatch(raw,/(?:lugar|campo|club|sede)\s*[:\-]\s*([^\n]+)/i).replace(/^[o•·]\s*/,"");}
-  let event="";m=raw.match(/\b(Final\s+RUTA\s*365)\b/i);if(m)event="Final RUTA 365";else event=firstMatch(raw,/(?:evento|torneo|campeonato)\s*[:\-]\s*([^\n]+)/i);
-  let time=firstMatch(raw,/\b(\d{1,2}[:.]\d{2})\s*(?:h|hrs?|horas)?\b/i).replace(".",":");if(time&&!/^\d{1,2}:\d{2}$/.test(time))time="";
-  let notes=lines.filter(x=>x.length>8).slice(0,12).join(" · ");if(event&&!notes.toLowerCase().includes(event.toLowerCase()))notes=event+(notes?" · "+notes:"");
+  function isoDate(d,m,y){d=Number(d);m=Number(m);y=Number(y);if(y<100)y+=2000;if(d<1||d>31||m<1||m>12)return '';return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;}
+  let date='',m;
+  m=raw.match(/\b(\d{1,2})\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)(?:\s+de\s+(20\d{2}))?\b/i);
+  if(m) date=isoDate(m[1],months[m[2].toLowerCase()],m[3]||2026);
+  if(!date){m=raw.match(/\b(\d{1,2})\s*[\/.\-]\s*(\d{1,2})\s*[\/.\-]\s*(\d{2}|20\d{2})\b/);if(m)date=isoDate(m[1],m[2],m[3]);}
+  if(!date){m=raw.match(/\b(\d{1,2})\s+(?:[\/.\-]\s*)?(\d{1,2})\s+(?:[\/.\-]\s*)?(20\d{2}|\d{2})\b/);if(m)date=isoDate(m[1],m[2],m[3]);}
+  if(!date){for(const line of lines){m=line.match(/\b(\d{1,2})\s*[\/.\-]\s*(\d{1,2})\s*[\/.\-]\s*(\d{2}|20\d{2})\b/);if(m){date=isoDate(m[1],m[2],m[3]);break;}}}
+  let type='';
+  if(/comit[ée]\s+t[ée]cnico\s+de\s+reglas|[áa]rbitro\s+principal|designad[oa]\s+por.*reglas|acta.*[áa]rbitro|uniformidad.*oficial/i.test(raw))type='Arbitraje RFEG';
+  else if(/reserva|campo\s*[123]|hora\s*\d{1,2}[:.]\d{2}|torneo|campeonato|circuito/i.test(raw))type='Golf';
+  let place='';
+  if(/centro nacional de golf/i.test(raw))place='Centro Nacional de Golf';
+  else if(/\bcampo\s*1\b/i.test(raw))place='Campo 1';
+  else{place=firstMatch(raw,/(?:lugar|campo|club|sede|d[oó]nde)\s*[:\-]\s*([^\n]+)/i).replace(/^[o•·]\s*/,'');}
+  let event='';m=raw.match(/\b(Final\s+RUTA\s*365)\b/i);if(m)event='Final RUTA 365';else event=firstMatch(raw,/(?:evento|torneo|campeonato)\s*[:\-]\s*([^\n]+)/i);
+  let time=firstMatch(raw,/\b(\d{1,2}[:.]\d{2})\s*(?:h|hrs?|horas)?\b/i).replace('.',':');if(time&&!/^\d{1,2}:\d{2}$/.test(time))time='';
+  let notes=lines.filter(x=>x.length>8).slice(0,16).join(' · ');if(event&&!notes.toLowerCase().includes(event.toLowerCase()))notes=event+(notes?' · ':'')+notes;
   return {type,date,time,place,notes,event,raw:rawOriginal};
 }
 async function analyzeSelectedImage(){
