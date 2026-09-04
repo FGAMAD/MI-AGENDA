@@ -52,9 +52,23 @@ main{padding:0 10px;margin:12px auto}
 .ocr-grid label{font-size:12px;color:#6b7280}.ocr-grid input{width:100%;box-sizing:border-box;min-height:42px}
 @media(max-width:700px){.ocr-grid{grid-template-columns:1fr}}
 </style>
+
+<style id="v13-final">
+@media(max-width:700px){
+  body.modal-open{overflow:hidden;touch-action:none}
+  .modal{overflow:hidden}
+  .modal-box{display:flex;flex-direction:column;max-height:92vh;height:92vh;overflow:hidden}
+  .modal-box form{overflow-y:auto;min-height:0;padding-right:2px}
+  .modal-box .actions{position:sticky;bottom:0;background:#fff;padding-top:10px;border-top:1px solid var(--line);z-index:2}
+  .calendar-head h2{font-size:18px;margin:0;text-align:center;flex:1}
+  .calendar-head button{width:48px}
+  #history .row{grid-template-columns:1fr!important}
+  #history .row button{width:100%;min-height:46px}
+}
+</style>
 </head>
 <body>
-<header><h1>Mi Agenda de Actividades <span style="font-size:12px;font-weight:500;opacity:.75">· v12</span></h1><div style="display:flex;gap:8px"><button onclick="exportData()">Exportar</button><button onclick="document.getElementById('importFile').click()">Importar</button><button onclick="openModal()">＋ Nueva actividad</button><button onclick="openImageChoice()">📷 Desde imagen</button></div><input id="importFile" type="file" accept=".json" style="display:none" onchange="importData(event)"><input id="imageFileCamera" type="file" accept="image/*" capture="environment" style="display:none" onchange="previewImage(event)"><input id="imageFileGallery" type="file" accept="image/*" style="display:none" onchange="previewImage(event)">
+<header><h1>Mi Agenda de Actividades <span style="font-size:12px;font-weight:500;opacity:.75">· v13</span></h1><div style="display:flex;gap:8px"><button onclick="openModal()">＋ Nueva actividad</button><button onclick="openImageChoice()">📷 Desde imagen</button></div><input id="importFile" type="file" accept=".json" style="display:none" onchange="importData(event)"><input id="imageFileCamera" type="file" accept="image/*" capture="environment" style="display:none" onchange="previewImage(event)"><input id="imageFileGallery" type="file" accept="image/*" style="display:none" onchange="previewImage(event)">
 </header></header><nav>
 <button class="tab active" onclick="showView('home',this)">Inicio</button>
 <button class="tab" onclick="showView('calendar',this)">Calendario anual</button>
@@ -72,13 +86,13 @@ main{padding:0 10px;margin:12px auto}
 </section>
 
 <section id="calendar" class="view">
-<div class="calendar-head"><button onclick="changeYear(-1)">‹</button><h2 id="yearTitle"></h2><button onclick="changeYear(1)">›</button></div>
+<div class="calendar-head"><button onclick="changeCalendar(-1)">‹</button><h2 id="yearTitle"></h2><button onclick="changeCalendar(1)">›</button></div>
 <div class="section"><div class="muted" style="margin-bottom:12px">🔵 programada · 🟢 realizada · ⚪ cancelada · 🔴 festivo · ⭐ importante</div><div class="year-grid" id="yearGrid"></div></div>
 <div class="section"><h3>Festivos locales</h3><div class="muted">Puedes añadir tus festivos locales para que aparezcan en rojo en el calendario.</div><div class="row" style="margin-top:10px"><input id="localHolidayDate" type="date"><input id="localHolidayName" placeholder="Nombre del festivo"><button class="primary" onclick="addLocalHoliday()">Añadir festivo</button></div><div id="localHolidayList" style="margin-top:10px"></div></div>
 </section>
 
 <section id="history" class="view">
-<div class="section"><h2>Historial</h2><div class="row" style="margin-bottom:12px"><select id="filterType" onchange="renderHistory()"><option value="">Todas las actividades</option></select><select id="filterStatus" onchange="renderHistory()"><option value="">Todos los estados</option><option value="planned">Programadas</option><option value="done">Realizadas</option><option value="cancelled">Canceladas</option></select></div><div class="row" style="margin-bottom:12px"><input id="filterFrom" type="date" onchange="renderHistory()"><input id="filterTo" type="date" onchange="renderHistory()"></div><div id="historyList"></div></div>
+<div class="section"><h2>Historial</h2><div class="row" style="margin-bottom:12px"><select id="filterType" onchange="renderHistory()"><option value="">Todas las actividades</option></select><select id="filterStatus" onchange="renderHistory()"><option value="">Todos los estados</option><option value="planned">Programadas</option><option value="done">Realizadas</option><option value="cancelled">Canceladas</option></select></div><div class="row" style="margin-bottom:12px"><input id="filterFrom" type="date" onchange="renderHistory()"><input id="filterTo" type="date" onchange="renderHistory()"></div><div class="row" style="margin-bottom:12px"><input id="filterText" placeholder="Buscar lugar, persona, torneo, notas…" oninput="renderHistory()"><button type="button" class="primary" onclick="exportFilteredCSV()">📊 Resumen para Excel</button></div><div id="historyList"></div></div>
 </section>
 <section id="importExcel" class="view"><div class="section"><h2>Importar tabla desde Excel</h2><p class="muted">Pega la tabla completa (desde Excel o desde el correo) y confirma la importación. Las columnas que conocemos se convierten en campos; los datos no reconocidos podrán conservarse en notas en una próxima ampliación.</p><button class="primary" onclick="importPastedTable()">📋 Pegar tabla de Excel</button></div></section></main>
 
@@ -262,7 +276,28 @@ let r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);if(Array.isA
 function toggleSpecificForm(){document.getElementById("arbitrajeFields").style.display=type.value==="Arbitraje RFGM"?"block":"none";}
 function addActivityType(){let n=prompt("Nombre del nuevo tipo de actividad:");if(!n||!n.trim())return;n=n.trim();let a=JSON.parse(localStorage.getItem("myCustomTypes")||"[]");if(!a.includes(n)){a.push(n);localStorage.setItem("myCustomTypes",JSON.stringify(a));}populateTypes();type.value=n;toggleSpecificForm();}
 function populateTypes(){let c=JSON.parse(localStorage.getItem("myCustomTypes")||"[]");document.getElementById("type").innerHTML=types.map(([n,i])=>`<option value="${n}">${i} ${n}</option>`).join("")+c.map(n=>`<option value="${n}">📌 ${n}</option>`).join("");}
-function renderHistory(){let ft=filterType?.value||"",fs=filterStatus?.value||"",f=filterFrom?.value||"",t=filterTo?.value||"";let arr=activities.filter(a=>(!ft||a.type===ft)&&(!fs||(a.status||"planned")===fs)&&(!f||a.date>=f)&&(!t||a.date<=t)).sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time));document.getElementById("historyList").innerHTML=arr.length?arr.map(item).join(""):"<span class='muted'>No hay actividades que coincidan.</span>";}
+function getFilteredActivities(){
+  const ft=filterType?.value||"", fs=filterStatus?.value||"", f=filterFrom?.value||"", t=filterTo?.value||"", q=(filterText?.value||"").trim().toLowerCase();
+  return activities.filter(a=>{
+    const hay=[a.type,a.place,a.people,a.specific,a.notes,a.tournament,a.committee,a.course,a.referees].filter(Boolean).join(" ").toLowerCase();
+    return (!ft||a.type===ft)&&(!fs||(a.status||"planned")===fs)&&(!f||a.date>=f)&&(!t||a.date<=t)&&(!q||hay.includes(q));
+  }).sort((a,b)=>(b.date+(b.time||"")).localeCompare(a.date+(a.time||"")));
+}
+function renderHistory(){
+  const arr=getFilteredActivities();
+  document.getElementById("historyList").innerHTML=arr.length?arr.map(item).join(""):"<span class='muted'>No hay actividades que coincidan.</span>";
+}
+function csvCell(v){return '"'+String(v??"").replace(/"/g,'""')+'"';}
+function exportFilteredCSV(){
+  const arr=getFilteredActivities();
+  if(!arr.length){alert("No hay actividades que coincidan con los filtros.");return;}
+  const header=["Fecha","Fecha fin","Actividad","Hora","Lugar","Personas","Datos específicos","Torneo","Comité","Campo","Árbitros","Marcaje","Estado","Importante","Notas"];
+  const rows=arr.map(a=>[a.date,a.endDate||a.date,a.type,a.time||"",a.place||"",a.people||"",a.specific||"",a.tournament||"",a.committee||"",a.course||"",a.referees||"",a.marking?"Sí":"",(a.status||"planned")==="done"?"Realizada":(a.status||"planned")==="cancelled"?"Cancelada":"Programada",a.important?"Sí":"",a.notes||""]);
+  const csv="\uFEFF"+[header,...rows].map(r=>r.map(csvCell).join(";")).join("\r\n");
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="mi-agenda-resumen-"+new Date().toISOString().slice(0,10)+".csv";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+
 function importPastedTable(){
   const txt=prompt("Pega aquí la tabla completa (Excel, correo o tabla con |):");
   if(!txt)return;
@@ -348,11 +383,12 @@ function activityCoversDate(a, ds){
   const end=a.endDate && a.endDate>=start ? a.endDate : start;
   return ds>=start && ds<=end;
 }
+let calendarMonth=new Date().getMonth();
 function init(){
-populateTypes();
-document.getElementById("date").value=new Date().toISOString().slice(0,10);
-  if(document.getElementById("endDate")) document.getElementById("endDate").value=a.endDate||a.date;
-render();
+  populateTypes();
+  document.getElementById("date").value=new Date().toISOString().slice(0,10);
+  if(document.getElementById("endDate")) document.getElementById("endDate").value=new Date().toISOString().slice(0,10);
+  render();
 }
 function save(){localStorage.setItem("myActivities",JSON.stringify(activities))}
 let editingId=null;
@@ -428,20 +464,26 @@ document.getElementById("todayList").innerHTML=todays.length?todays.map(item).jo
 const upcoming=activities.filter(a=>(a.status||"planned")==="planned"&&a.date>=start).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time)).slice(0,8);
 document.getElementById("upcomingList").innerHTML=upcoming.length?upcoming.map(item).join(""):"<span class='muted'>No hay actividades programadas.</span>";
 const hist=activities.slice().sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time));
-document.getElementById("historyList").innerHTML=hist.length?hist.map(item).join(""):"<span class='muted'>Todavía no hay actividades.</span>";if(typeof filterType!=="undefined"){filterType.innerHTML='<option value="">Todas las actividades</option>'+types.map(x=>`<option value="${x[0]}">${x[0]}</option>`).join("");}
+if(typeof filterType!=="undefined"){const prev=filterType.value;filterType.innerHTML='<option value="">Todas las actividades</option>'+types.map(x=>`<option value="${x[0]}">${x[0]}</option>`).join("");if(types.some(x=>x[0]===prev))filterType.value=prev;renderHistory();}
 document.getElementById("localHolidayList").innerHTML=Object.entries(localHolidays).sort().map(([d,n])=>`<div class="activity"><div class="grow"><strong>🔴 ${n}</strong><div class="meta">${fmt(d)}</div></div><button class="secondary" onclick="deleteLocalHoliday('${d}')">Eliminar</button></div>`).join("")||"<span class='muted'>No hay festivos locales añadidos.</span>";
 renderCalendar();
 }
 function deleteLocalHoliday(d){delete localHolidays[d];localStorage.setItem("myLocalHolidays",JSON.stringify(localHolidays));render();}
-function changeYear(n){year+=n;renderCalendar()}
+function changeYear(n){year+=n;renderCalendar();}
+function changeCalendar(n){
+  const mobile=window.matchMedia("(max-width:700px)").matches;
+  if(!mobile){changeYear(n);return;}
+  calendarMonth+=n;
+  if(calendarMonth<0){calendarMonth=11;year--;} else if(calendarMonth>11){calendarMonth=0;year++;}
+  renderCalendar();
+}
 function renderCalendar(){
-  document.getElementById("yearTitle").textContent="Calendario "+year;
-  const holidayMap=allHolidays();
-  const names=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
-  const week=["L","M","X","J","V","S","D"];
   const mobile=window.matchMedia("(max-width:700px)").matches;
   const current=new Date();
-  const months=mobile?[((current.getFullYear()===year)?current.getMonth():0)]:Array.from({length:12},(_,i)=>i);
+  const names=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+  document.getElementById("yearTitle").textContent=mobile?(names[calendarMonth]+" "+year):("Calendario "+year);
+  const holidayMap=allHolidays(), week=["L","M","X","J","V","S","D"];
+  const months=mobile?[calendarMonth]:Array.from({length:12},(_,i)=>i);
   let out="";
   for(const m of months){
     let first=new Date(year,m,1),last=new Date(year,m+1,0),offset=(first.getDay()+6)%7;
