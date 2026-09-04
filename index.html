@@ -54,7 +54,7 @@ main{padding:0 10px;margin:12px auto}
 </style>
 </head>
 <body>
-<header><h1>Mi Agenda de Actividades <span style="font-size:12px;font-weight:500;opacity:.75">· v11</span></h1><div style="display:flex;gap:8px"><button onclick="exportData()">Exportar</button><button onclick="document.getElementById('importFile').click()">Importar</button><button onclick="openModal()">＋ Nueva actividad</button><button onclick="openImageChoice()">📷 Desde imagen</button></div><input id="importFile" type="file" accept=".json" style="display:none" onchange="importData(event)"><input id="imageFileCamera" type="file" accept="image/*" capture="environment" style="display:none" onchange="previewImage(event)"><input id="imageFileGallery" type="file" accept="image/*" style="display:none" onchange="previewImage(event)">
+<header><h1>Mi Agenda de Actividades <span style="font-size:12px;font-weight:500;opacity:.75">· v12</span></h1><div style="display:flex;gap:8px"><button onclick="exportData()">Exportar</button><button onclick="document.getElementById('importFile').click()">Importar</button><button onclick="openModal()">＋ Nueva actividad</button><button onclick="openImageChoice()">📷 Desde imagen</button></div><input id="importFile" type="file" accept=".json" style="display:none" onchange="importData(event)"><input id="imageFileCamera" type="file" accept="image/*" capture="environment" style="display:none" onchange="previewImage(event)"><input id="imageFileGallery" type="file" accept="image/*" style="display:none" onchange="previewImage(event)">
 </header></header><nav>
 <button class="tab active" onclick="showView('home',this)">Inicio</button>
 <button class="tab" onclick="showView('calendar',this)">Calendario anual</button>
@@ -97,6 +97,8 @@ main{padding:0 10px;margin:12px auto}
 </div>
 </div>
 
+<div class="modal" id="duplicateChoiceModal"><div class="modal-box"><h2>Selecciona la actividad</h2><p class="muted" id="duplicateChoiceText"></p><div id="duplicateChoiceList"></div><div class="actions"><button type="button" class="secondary" onclick="closeDuplicateChoice()">Cancelar</button></div></div></div>
+
 <div class="modal" id="imageChoiceModal"><div class="modal-box"><h2>📷 Añadir imagen</h2><p class="muted">Elige cómo quieres añadir la imagen.</p><div class="actions" style="display:grid;grid-template-columns:1fr;gap:10px"><button type="button" class="primary" onclick="chooseCamera()">📸 Hacer una foto</button><button type="button" class="secondary" onclick="chooseGallery()">🖼️ Elegir de Fotos</button><button type="button" class="secondary" onclick="closeImageChoice()">Cancelar</button></div></div></div>
 
 <div class="modal" id="imageModal"><div class="modal-box"><h2>📷 Imagen seleccionada</h2>
@@ -132,15 +134,15 @@ let year=new Date().getFullYear();
 
 let localHolidays=JSON.parse(localStorage.getItem("myLocalHolidays")||"{}");
 let selectedImageData = null;
-function openImageChoice(){document.getElementById("imageChoiceModal").classList.add("open");}
-function closeImageChoice(){document.getElementById("imageChoiceModal").classList.remove("open");}
+function openImageChoice(){document.getElementById("imageChoiceModal").classList.add("open");lockModal();}
+function closeImageChoice(){document.getElementById("imageChoiceModal").classList.remove("open");unlockModal();}
 function chooseCamera(){closeImageChoice();document.getElementById("imageFileCamera").click();}
 function chooseGallery(){closeImageChoice();document.getElementById("imageFileGallery").click();}
 function chooseFormCamera(){document.getElementById("photo").setAttribute("capture","environment");document.getElementById("photo").click();}
 function chooseFormGallery(){document.getElementById("photo").removeAttribute("capture");document.getElementById("photo").click();}
 function previewFormPhoto(event){const file=event.target.files&&event.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{selectedImageData=reader.result;document.getElementById("photoPreview").innerHTML='<img src="'+selectedImageData+'" style="max-width:100%;max-height:180px;border-radius:10px;margin-top:6px">';};reader.readAsDataURL(file);}
-function previewImage(event){const file=event.target.files&&event.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{selectedImageData=reader.result;document.getElementById("imagePreview").src=selectedImageData;document.getElementById("imageModal").classList.add("open");};reader.readAsDataURL(file);event.target.value="";}
-function closeImageModal(){document.getElementById("imageModal").classList.remove("open");}
+function previewImage(event){const file=event.target.files&&event.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{selectedImageData=reader.result;document.getElementById("imagePreview").src=selectedImageData;document.getElementById("imageModal").classList.add("open");lockModal();};reader.readAsDataURL(file);event.target.value="";}
+function closeImageModal(){document.getElementById("imageModal").classList.remove("open");unlockModal();}
 
 function normalizeText(s){return (s||"").replace(/\r/g,"").replace(/[ \t]+/g," ").trim();}
 function firstMatch(text,re){const m=text.match(re);return m?normalizeText(m[1]||m[0]):"";}
@@ -354,6 +356,8 @@ render();
 }
 function save(){localStorage.setItem("myActivities",JSON.stringify(activities))}
 let editingId=null;
+function lockModal(){document.body.classList.add("modal-open")}
+function unlockModal(){if(!document.querySelector(".modal.open"))document.body.classList.remove("modal-open")}
 function openModal(){
 editingId=null;
 document.getElementById("modalTitle").textContent="Nueva actividad";
@@ -362,7 +366,7 @@ document.querySelector("#modal form").reset();
 document.getElementById("date").value=new Date().toISOString().slice(0,10);
 document.getElementById("status").value="auto";
 document.getElementById("photoPreview").innerHTML="";
-document.getElementById("modal").classList.add("open");
+document.getElementById("modal").classList.add("open");lockModal();
 }
 function editActivity(id){
 let a=activities.find(x=>x.id===id); if(!a)return;
@@ -374,9 +378,16 @@ specific.value=a.specific||"";notes.value=a.notes||"";color.value=a.color||"#256
 status.value=a.status||((a.done||a.date<=new Date().toISOString().slice(0,10))?"done":"planned");
 important.checked=!!a.important;tournament.value=a.tournament||"";committee.value=a.committee||"";course.value=a.course||"";numRef.value=a.numRef||"";referees.value=a.referees||"";marking.checked=!!a.marking;toggleSpecificForm();
 document.getElementById("photoPreview").innerHTML=a.photo?`<img src="${a.photo}" style="max-width:100%;max-height:160px;border-radius:8px">`:"";
-document.getElementById("modal").classList.add("open");
+document.getElementById("modal").classList.add("open");lockModal();
 }
-function closeModal(){document.getElementById("modal").classList.remove("open")}
+function closeModal(){document.getElementById("modal").classList.remove("open");unlockModal()}
+function closeDuplicateChoice(){document.getElementById("duplicateChoiceModal").classList.remove("open");unlockModal()}
+function chooseDuplicateActivity(id){closeDuplicateChoice();editActivity(id)}
+function showDuplicateChoice(ds,same){
+  document.getElementById("duplicateChoiceText").textContent=`Hay ${same.length} actividades en ${fmt(ds)}. Elige cuál quieres modificar:`;
+  document.getElementById("duplicateChoiceList").innerHTML=same.map(a=>`<button type="button" class="dup-option" onclick="chooseDuplicateActivity(${a.id})"><strong>${icon(a.type)} ${a.type}</strong><br><span class="muted">${a.time?a.time+" · ":""}${a.place||a.specific||"Sin más datos"}</span></button>`).join("");
+  document.getElementById("duplicateChoiceModal").classList.add("open");lockModal();
+}
 function deleteActivity(){
 if(editingId===null)return;
 if(!confirm("¿Eliminar esta actividad? Esta acción no se puede deshacer."))return;activities=activities.filter(a=>a.id!==editingId);save();closeModal();render();
@@ -451,7 +462,9 @@ function renderCalendar(){
 
 function dayClick(ds){
 let same=activities.filter(a=>activityCoversDate(a,ds));
-if(same.length===1){ editActivity(same[0].id); } else { openModal(); document.getElementById("date").value=ds; }
+if(same.length===1){ editActivity(same[0].id); }
+else if(same.length>1){ showDuplicateChoice(ds,same); }
+else { openModal(); document.getElementById("date").value=ds; }
 }
 function showView(id,btn){
 document.querySelectorAll(".view").forEach(x=>x.classList.remove("active"));
